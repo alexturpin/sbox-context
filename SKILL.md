@@ -1,11 +1,19 @@
 ---
 name: sbox-context
-description: Prepare, refresh, and consult local s&box documentation, API references, and optional engine source when developing or investigating an s&box project.
+description: Set up s&box references and the editor MCP connection, and consult documentation, API pages, and optional engine source during s&box development.
 ---
 
 # s&box Context
 
-Use official s&box references to ground engine-specific decisions. This skill provides portable fetchers and a lookup workflow; the downloaded snapshots belong to the user's project. Keep other game references, architecture, and simulation/testing rules under that project's control.
+Use official s&box references to ground engine-specific decisions. This skill provides portable fetchers, editor MCP connection setup, and a lookup workflow; the downloaded snapshots belong to the user's project. Keep other game references, architecture, and simulation/testing rules under that project's control.
+
+## Connect the editor MCP server
+
+Include the editor MCP connection in normal project setup, unless the user requested only reference downloads. For MCP-only setup, skip snapshot downloads. Read [references/mcp-setup.md](references/mcp-setup.md) for the connection configuration, read-only check, and troubleshooting steps.
+
+The server is built into the running s&box editor; it is not a package the skill installs or a separate background service. Configure or reuse the Codex connection, verify the server identity and open project, and report configuration and live availability separately. A closed editor should not prevent completing reference setup.
+
+Before editor operations, use `editor_status` to confirm the intended project is open. Discover tools with `search_tools` and invoke them with `call_tool`; read `read_console` after relevant operations. Use the connected MCP tools when available, keeping editor mutations within the user's task. Automated editor checks supplement the user's final visual/gameplay validation.
 
 ## Consult references
 
@@ -27,7 +35,7 @@ node "<skill-dir>/scripts/sbox-context.js" sync --project-root "<project-root>" 
 node "<skill-dir>/scripts/sbox-context.js" status --project-root "<project-root>"
 ```
 
-Normal setup fetches docs and API. Include source for a requested full setup or an investigation needing implementation evidence. Reuse suitable existing snapshots. On refresh, select only the resources requested or relevant to the task.
+Normal skill setup connects the editor MCP server and fetches docs and API. The `sync` helper itself only downloads references; MCP configuration is handled by the agent following the section above. Include source for a requested full setup or an investigation needing implementation evidence. Reuse suitable existing snapshots. On refresh, select only the resources requested or relevant to the task.
 
 - Paths may be customized with `--docs-dir`, `--api-dir`, and `--source-dir`, relative to the project root. Previously recorded paths are reused when these options are omitted. Keep paths disjoint and inside the project.
 - Use `--source-ref <commit-or-tag-or-branch>` to select source and `--api-url <official-schema-json-url>` to select a published API snapshot. Without a new selection, refresh reuses a recorded pin. A default source fetch resolves upstream HEAD once and records its commit; `--source-ref HEAD` explicitly advances it. A default API fetch resolves the published schema once and records its URL; `--api-url latest` explicitly advances it. Website docs have no release pin and are dated and hashed snapshots.
@@ -37,4 +45,4 @@ Normal setup fetches docs and API. Include source for a requested full setup or 
 
 Run `--help` for pacing and timeout options. If an upstream change breaks discovery or schema validation, retain the previous snapshot and investigate the official endpoint instead of generating an empty replacement. A Windows directory lock may require the user to close the process watching the snapshot before retrying.
 
-After setup or refresh, report installed resources, paths, version identifiers, and any failures. Do not initialize a game, download unrelated reference implementations, build the engine source, or publish anything as part of reference setup.
+After setup or refresh, report installed resources, paths, version identifiers, MCP configuration/reachability and open-project checks, and any failures. Do not initialize a game, download unrelated reference implementations, build the engine source, or publish anything as part of reference setup.
