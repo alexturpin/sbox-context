@@ -1,0 +1,3 @@
+node_modules/
+.sbox-context-stage-*/
+.sbox-context-update.lock

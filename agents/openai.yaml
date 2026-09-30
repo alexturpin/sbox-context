@@ -1,0 +1,3 @@
+interface:
+  display_name: "s&box Context"
+  short_description: "Prepare and consult local s&box engine references"
