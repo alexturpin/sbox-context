@@ -67,3 +67,46 @@ test("HTTP, JSON-RPC, and response-identity errors fail the probe", async () => 
   await assert.rejects(checkMcp(undefined, { fetch: async () => new Response(JSON.stringify({ jsonrpc: "2.0", id: 1, error: { message: "broken" } })) }), /MCP initialize: broken/)
   await assert.rejects(checkMcp(undefined, { fetch: async () => new Response(JSON.stringify({ jsonrpc: "2.0", id: 999, result: {} })) }), /Invalid MCP response/)
 })
+
+import { checkCli } from "../check-mcp.js"
+import { findEngine } from "../engine.js"
+
+const engine = { dir: "C:/sbox", cli: "C:/sbox/bin/managed/sbox-cli.exe", xmlDocs: ["C:/sbox/bin/managed/Sandbox.Engine.xml"] }
+
+function cliFixture(replies) {
+  const calls = []
+  return { calls, run: (cli, args, cwd) => { calls.push({ cli, args, cwd }); return replies[args[0]] } }
+}
+
+test("sbox-cli check lists instances, then reads editor_status from the project folder only", () => {
+  const fake = cliFixture({
+    "--list": { status: 0, stdout: '[{"pid":4,"kind":"editor","project":"C:/game/game.sbproj"}]', stderr: "" },
+    "--call": { status: 0, stdout: '{"Project":"game","ActiveScenePath":"scenes/main.scene"}', stderr: "" },
+  })
+  const result = checkCli({ projectRoot: "C:/game", engine, run: fake.run })
+  assert.deepEqual(fake.calls.map((call) => call.args), [["--list"], ["--call", "editor_status"]])
+  assert.ok(fake.calls.every((call) => call.cwd === "C:/game"))
+  assert.equal(result.transport, "sbox-cli")
+  assert.equal(result.instances.length, 1)
+  assert.equal(result.editorStatus.ActiveScenePath, "scenes/main.scene")
+})
+
+test("sbox-cli failures name the cause, and an engine without sbox-cli points at the HTTP check", () => {
+  const none = cliFixture({
+    "--list": { status: 0, stdout: "[]", stderr: "" },
+    "--call": { status: 1, stdout: "", stderr: "sbox-cli: No running editor has C:/game/game.sbproj open." },
+  })
+  assert.throws(() => checkCli({ projectRoot: "C:/game", engine, run: none.run }), /No running editor.*no running editor or game was listed/)
+  assert.throws(() => checkCli({ engine: { dir: "C:/old", cli: null, xmlDocs: [] }, run: none.run }), /before 26\.10\.13.*--url/)
+})
+
+test("engine lookup prefers an explicit folder, then FACEPUNCH_ENGINE, then the user variable", () => {
+  const present = new Set(["C:/a", "C:/b", "C:/b/bin/managed/sbox-cli.exe", "C:/b/bin/managed/Sandbox.Tools.xml"].map((p) => p.replaceAll("/", "\\")))
+  const exists = (p) => present.has(p.replaceAll("/", "\\"))
+  assert.equal(findEngine("C:/missing", { env: {}, readUserVariable: () => "C:/b", exists }), null)
+  const fromEnv = findEngine(undefined, { env: { FACEPUNCH_ENGINE: "C:/b" }, readUserVariable: () => "C:/a", exists })
+  assert.equal(fromEnv.dir, "C:/b")
+  assert.ok(fromEnv.cli.endsWith("sbox-cli.exe") || fromEnv.cli.endsWith("sbox-cli"))
+  assert.equal(fromEnv.xmlDocs.length, 1)
+  assert.equal(findEngine(undefined, { env: {}, readUserVariable: () => "C:/a", exists }).cli, null)
+})

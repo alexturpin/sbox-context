@@ -1,9 +1,41 @@
 #!/usr/bin/env node
 import path from "node:path"
+import { spawnSync } from "node:child_process"
 import { pathToFileURL } from "node:url"
+import { findEngine } from "./engine.js"
+
+const PROTOCOL = "2025-11-25"
+
+/**
+ * Read-only check through sbox-cli (engine 26.10.13 and later): list running instances, then call
+ * editor_status for the project at projectRoot. sbox-cli talks to the editor over a per-user named
+ * pipe; it picks the editor that has the project in its working directory open.
+ */
+export function checkCli({ projectRoot = process.cwd(), engine, run = runCli, timeoutMs = 30000 } = {}) {
+  const located = engine ?? findEngine()
+  if (!located) throw new Error("No s&box installation found (set FACEPUNCH_ENGINE or pass --engine)")
+  if (!located.cli) throw new Error(`No sbox-cli in ${located.dir}; engines before 26.10.13 use the HTTP server (--url)`)
+  const listed = run(located.cli, ["--list"], projectRoot, timeoutMs)
+  if (listed.status !== 0) throw new Error(`sbox-cli --list failed: ${listed.stderr.trim()}`)
+  const instances = JSON.parse(listed.stdout || "[]")
+  if (!Array.isArray(instances)) throw new Error("sbox-cli --list did not return an array")
+  const status = run(located.cli, ["--call", "editor_status"], projectRoot, timeoutMs)
+  if (status.status !== 0) {
+    const reason = status.stderr.trim() || `exit ${status.status}`
+    throw new Error(`editor_status through sbox-cli failed: ${reason}${instances.length ? "" : " (no running editor or game was listed)"}`)
+  }
+  let editorStatus
+  try { editorStatus = JSON.parse(status.stdout) } catch { throw new Error("editor_status did not return JSON") }
+  return { transport: "sbox-cli", cli: located.cli, xmlDocs: located.xmlDocs, instances, editorStatus }
+}
+
+function runCli(cli, args, cwd, timeoutMs) {
+  const result = spawnSync(cli, args, { cwd, encoding: "utf8", timeout: timeoutMs, windowsHide: true })
+  if (result.error) throw result.error
+  return result
+}
 
 export const DEFAULT_URL = "http://127.0.0.1:7269/mcp"
-const PROTOCOL = "2025-11-25"
 
 export function validateEndpoint(value) {
   const url = new URL(value)
@@ -14,6 +46,7 @@ export function validateEndpoint(value) {
   return url
 }
 
+/** Legacy check for editors before 26.10.13, which served MCP over loopback HTTP. */
 export async function checkMcp(value = DEFAULT_URL, options = {}) {
   const url = validateEndpoint(value)
   const request = options.fetch ?? fetch
@@ -52,34 +85,38 @@ export async function checkMcp(value = DEFAULT_URL, options = {}) {
     if (result?.isError) throw new Error(`editor_status failed: ${JSON.stringify(result.content ?? [])}`)
     editorStatus = result?.structuredContent ?? result?.content ?? result
   }
-  return { url: url.href, serverInfo: initialized.serverInfo, protocolVersion: protocol, tools, editorStatus }
+  return { transport: "http", url: url.href, serverInfo: initialized.serverInfo, protocolVersion: protocol, tools, editorStatus }
 }
 
+export const HELP = `Usage: node check-mcp.js [--project-root <dir>] [--engine <sbox-dir>] [--timeout-ms 30000]
+       node check-mcp.js --url http://127.0.0.1:7269/mcp     (editors before 26.10.13)
+Read-only: lists running instances and calls editor_status through sbox-cli from the
+project folder, or through the legacy HTTP endpoint with --url. No configuration writes.`
+
 export async function main(args) {
-  if (args.includes("--help") || args.includes("-h")) {
-    console.log("Usage: node check-mcp.js [--url http://127.0.0.1:7269/mcp] [--timeout-ms 5000]\nRead-only MCP initialization, tool discovery, and editor status. No configuration writes.")
-    return
-  }
-  let url = DEFAULT_URL, timeoutMs = 5000
-  const seen = new Set()
+  if (args.includes("--help") || args.includes("-h")) { console.log(HELP); return }
+  const options = {}
+  const flags = { "--url": "url", "--timeout-ms": "timeoutMs", "--project-root": "projectRoot", "--engine": "engine" }
   for (let i = 0; i < args.length; i++) {
-    const flag = args[i]
-    if (!["--url", "--timeout-ms"].includes(flag) || seen.has(flag)) throw new Error(`Unknown or duplicate option: ${flag}`)
-    seen.add(flag)
+    const key = flags[args[i]]
+    if (!key || Object.hasOwn(options, key)) throw new Error(`Unknown or duplicate option: ${args[i]}`)
     const value = args[++i]
-    if (value === undefined || value.startsWith("--")) throw new Error(`Missing value for ${flag}`)
-    if (flag === "--url") url = value
-    else {
-      if (!/^\d+$/.test(value) || !Number.isSafeInteger(Number(value)) || Number(value) < 1 || Number(value) > 60000) throw new Error("--timeout-ms must be an integer between 1 and 60000")
-      timeoutMs = Number(value)
-    }
+    if (value === undefined || value.startsWith("--")) throw new Error(`Missing value for ${args[i - 1]}`)
+    if (key === "timeoutMs") {
+      if (!/^\d+$/.test(value) || Number(value) < 1 || Number(value) > 600000) throw new Error("--timeout-ms must be an integer between 1 and 600000")
+      options.timeoutMs = Number(value)
+    } else options[key] = value
   }
-  console.log(JSON.stringify(await checkMcp(url, { timeoutMs }), null, 2))
+  if (options.url && (options.projectRoot || options.engine)) throw new Error("--url is the legacy HTTP check; it takes no --project-root or --engine")
+  const result = options.url ? await checkMcp(options.url, { timeoutMs: options.timeoutMs }) :
+    checkCli({ projectRoot: options.projectRoot ? path.resolve(options.projectRoot) : process.cwd(),
+      engine: options.engine ? findEngine(options.engine) ?? undefined : undefined, timeoutMs: options.timeoutMs })
+  console.log(JSON.stringify(result, null, 2))
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.argv[1])).href) {
   main(process.argv.slice(2)).catch((error) => {
-    console.error(`${error.message}\nOpen the intended s&box project and check Editor → Preferences → MCP Server for enablement, URL, and running status.`)
+    console.error(`${error.message}\nOpen the intended project in the s&box editor (Project Settings > AI > Enable MCP Communication must be on), and run from the desktop session: the named pipe is not reachable from a remote SSH session.`)
     process.exitCode = 1
   })
 }

@@ -18,19 +18,19 @@ Default outputs are `docs/sbox-docs`, `docs/sbox-api`, and optional `reference/s
 
 Use `--help` for custom paths, timeouts, and pacing. Legacy snapshots require an explicit `--adopt` after inspecting/preserving custom files. Managed snapshots containing local edits are refused. Snapshot and manifest publication use staged replacement with rollback; if Windows locks a directory, close its watcher and retry. Resources commit individually, so an error fetching API after docs succeeded leaves the new docs and the old API intact. A project update lock prevents overlapping publications. If a process crashes, inspect its lock and retained staging directory before removing a stale lock and retrying.
 
-Keep the lock manifest in version control. Usually ignore generated snapshots; projects needing frozen references can commit them. The optional `assets/agents-snippet.md` is merged by the agent during requested setup, not by the fetcher. No other references or project instructions are modified automatically.
+The lock manifest describes the snapshots on one machine. Commit it together with the snapshots, or ignore both; a committed manifest beside ignored snapshots makes machines that fetched at different times disagree. Engine source shared across machines can instead be a shallow git submodule at the source path. The optional `assets/agents-snippet.md` is merged by the agent during requested setup, not by the fetcher. No other references or project instructions are modified automatically.
 
 ## Editor MCP
 
-Normal skill setup also configures or reuses the Codex connection to the editor's built-in MCP server. Default: `http://127.0.0.1:7269/mcp`. The editor must be running with the intended game project open. Its **Editor → Preferences → MCP Server** page shows the current URL and enablement. No separate server package is installed.
-
-The agent follows `references/mcp-setup.md` to merge project-scoped Codex configuration and verify the open project. Direct `sync` commands only download references; they do not change Codex configuration. You can independently check the running server with:
+Normal skill setup also configures or reuses the client's connection to the editor. Since engine 26.10.13 that is `sbox-cli`, which ships with every installation at `<engine>/bin/managed/sbox-cli.exe` and reaches the running editor over a per-user named pipe. Older editors served `http://127.0.0.1:7269/mcp`. The editor must be running with the intended game project open, and **Project Settings > AI > Enable MCP Communication** must be on. `references/mcp-setup.md` has the Codex and Claude Code entries. Check the connection independently with:
 
 ```powershell
-node C:\Users\alext\src\sbox-context\scripts\check-mcp.js
+node C:\Users\alext\src\sbox-context\scripts\check-mcp.js --project-root C:\path\to\game
 ```
 
-The helper initializes MCP, lists tools, and reads editor status. It changes neither configuration nor editor content. A closed editor causes the check to fail with setup guidance; reference downloads still work. Test the connection through Codex after reloading its MCP configuration to confirm that tools are available in the chat.
+The helper lists running instances and reads `editor_status` through sbox-cli; `--url` checks an older editor's HTTP endpoint. It changes neither configuration nor editor content. Run it from the desktop session: the pipe was not reachable from a remote SSH session.
+
+The installation also ships version-matched references that need no download: the XML API docs `Sandbox.Engine.xml` and `Sandbox.Tools.xml` beside sbox-cli, and Facepunch's agent guidance through `sbox-cli --skill`.
 
 ## Maintain
 
