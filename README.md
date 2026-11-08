@@ -1,6 +1,6 @@
 # sbox-context
 
-A reusable Codex skill for preparing and consulting official s&box documentation, API pages, optional public engine source, and the editor MCP connection. Install this repository's root as a skill folder named `sbox-context` in your Codex user skill location; keep a single checkout to maintain the scripts once. Nothing needs to be copied into each game repository.
+A reusable Codex and Claude Code skill for preparing and consulting official s&box documentation, API pages, optional public engine source, and the editor MCP connection. It also provides scripted editor access with a shared lock, and working practices for coding agents on s&box projects. Install this repository's root as a skill folder named `sbox-context` in your Codex user skill location; keep a single checkout to maintain the scripts once. Nothing needs to be copied into each game repository.
 
 The root `SKILL.md` is the entry point. Invoke `$sbox-context` while working in an s&box project, for example: "Use $sbox-context to set up references and the editor MCP connection in this project." Source is optional: ask for full setup or request it during an engine investigation. See `SKILL.md` for the development lookup workflow.
 
@@ -31,6 +31,17 @@ node C:\Users\alext\src\sbox-context\scripts\check-mcp.js --project-root C:\path
 The helper lists running instances and reads `editor_status` through sbox-cli; `--url` checks an older editor's HTTP endpoint. It changes neither configuration nor editor content. Run it from the desktop session: the pipe was not reachable from a remote SSH session.
 
 The installation also ships version-matched references that need no download: the XML API docs `Sandbox.Engine.xml` and `Sandbox.Tools.xml` beside sbox-cli, and Facepunch's agent guidance through `sbox-cli --skill`.
+
+## Scripted editor access
+
+```powershell
+node C:\Users\alext\src\sbox-context\scripts\editor-lock.js take my-agent --project-root C:\path\to\game
+node C:\Users\alext\src\sbox-context\scripts\editor.js editor_status --project-root C:\path\to\game
+node C:\Users\alext\src\sbox-context\scripts\editor.js scene_trace @args.json --project-root C:\path\to\game --holder my-agent
+node C:\Users\alext\src\sbox-context\scripts\editor-lock.js release my-agent --project-root C:\path\to\game
+```
+
+`editor.js` keeps one sbox-cli session, checks the open project before mutating, honours a project's `sbox-editor.json` (`deny`, `requireLock`), and refuses mutation under another holder's live lock. `references/project-practices.md` and `references/agent-workflow.md` hold the working practices; `assets/worker-preamble.md` is a template for multi-agent projects.
 
 ## Maintain
 

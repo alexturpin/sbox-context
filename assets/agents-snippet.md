@@ -16,4 +16,14 @@ Document findings beside the affected project code. Rendering, input, networking
 
 Reach the running editor through `<engine>/bin/managed/sbox-cli.exe` (engine 26.10.13 and later; earlier editors served `http://127.0.0.1:7269/mcp`). Run from the project folder, it attaches to the editor that has this project open. The client entry belongs in the project's `.codex/config.toml` (`command` = the sbox-cli path, `args = ["--connect", "<sbproj>"]`), unless an existing user connection is reused. Facepunch's version-matched guidance is printed by `sbox-cli --skill`; this file's rules override it.
 
+Scripts and headless agent runs reach the editor through the sbox-context skill's `scripts/editor.js` (one session per process, open-project check, `sbox-editor.json` deny list) under `scripts/editor-lock.js` (one driver at a time: take with your holder name, set `SBOX_EDITOR_LOCK_HOLDER`, release at the end). <Never save the scene: scenes and prefabs are generated from files.> Never relaunch the editor from an agent run, and never edit C# while Play or a validation queue runs.
+
 Use `editor_status` to confirm the intended game project is open before editor operations. Discover live tools with `search_tools`, invoke them through `call_tool`, and check `read_console` for relevant errors. The connection works only while the editor runs, so distinguish a configured connection from one actually verified. Editor checks supplement the user's final visual/gameplay validation.
+
+## Verification
+
+Verification belongs in reports, tests and review, never in shipped game code. A verify task runs its whole list and reports every failure; a latched failure stays failed. Player-visible changes are checked once in an exported build, and rendering, input, networking and final gameplay behaviour need the user's validation.
+
+## Engine updates
+
+Keep one notes file per engine update (`<specs/engine-updates/<version>.md>`): what breaks, what to measure again, what to use. Read the newest before engine-sensitive work.

@@ -1,11 +1,11 @@
 ---
 name: sbox-context
-description: Set up s&box references and the editor connection (sbox-cli), and consult the installed engine's XML docs and shipped agent guidance, documentation, API pages, and engine source during s&box development.
+description: Set up s&box references and the editor connection (sbox-cli), consult the installed engine's XML docs, documentation, API pages and engine source, script the editor safely (lock, project check, deny list), and apply proven working practices for coding agents on s&box projects, including multi-agent setups. Use when starting or setting up an s&box project, doing engine-specific s&box work, driving the s&box editor from agents or scripts, or handling an engine update.
 ---
 
 # s&box Context
 
-Use official s&box references to ground engine-specific decisions. This skill provides portable fetchers, editor MCP connection setup, and a lookup workflow; the downloaded snapshots belong to the user's project. Keep other game references, architecture, and simulation/testing rules under that project's control.
+Use official s&box references to ground engine-specific decisions, and reach the editor safely. This skill provides portable fetchers, the editor connection, a scripted editor client with a shared lock, a lookup workflow, and working practices learned on a long agent-driven s&box project. The downloaded snapshots belong to the user's project. Keep game references, architecture, and simulation/testing rules under that project's control: the project's own instructions override this skill's defaults.
 
 ## Connect the editor MCP server
 
@@ -14,6 +14,25 @@ Include the editor connection in normal project setup, unless the user requested
 Since engine 26.10.13 the editor has no HTTP server. `<engine>/bin/managed/sbox-cli.exe` ships with every installation and reaches a running editor or game over a per-user named pipe. Run from the project folder, it talks only to the editor that has that project open. Older editors served MCP on `http://127.0.0.1:7269/mcp`; the check keeps a `--url` mode for them. Configure or reuse the client's connection, verify the open project, and report configuration and live availability separately. A closed editor should not prevent completing reference setup.
 
 Before editor operations, use `editor_status` to confirm the intended project is open. Discover tools with `search_tools` and invoke them with `call_tool`; read `read_console` after relevant operations. Keep editor mutations within the user's task. Automated editor checks supplement the user's final visual/gameplay validation.
+
+## Script the editor (agents, tools, several runs)
+
+For scripts, headless agent runs (which may refuse mutating MCP tools through the client's own entry), or more than one agent sharing an editor, use the bundled client instead of a raw MCP entry:
+
+```text
+node "<skill-dir>/scripts/editor-lock.js" take <HOLDER> --project-root "<game-folder>"
+node "<skill-dir>/scripts/editor.js" <tool> '<json>' --project-root "<game-folder>" --holder <HOLDER>
+node "<skill-dir>/scripts/editor.js" <tool> @args.json --out result.json   # JSON through a file (PowerShell 5.1)
+node "<skill-dir>/scripts/editor-lock.js" release <HOLDER> --project-root "<game-folder>"
+```
+
+`editor.js` keeps one `sbox-cli --connect` session per process (import `openEditor` from Node for several calls), routes tools that are not top-level through `call_tool`, and before the first non-read-only tool checks that `editor_status` names the project root. It refuses tools listed under `deny` in the project's optional `sbox-editor.json` (`{"deny": ["save_scene"], "requireLock": true}`), including inside `call_tool` and `call_tools`. It refuses mutation while another holder's live lock exists, and refreshes the caller's own lock on each call. Exit codes: 0 ok, 2 tool error, 1 cannot call. `editor-lock.js` is exclusive and re-entrant; a lock goes stale after 15 minutes and is released only by its holder. Gitignore `.sbox-editor.lock`.
+
+## Apply working practices
+
+- When setting up a project, or when a question isn't covered by the project's instructions, read [references/project-practices.md](references/project-practices.md): reference order, editor access, C# and hot reload, Play-mode verification, Scene Compile and performance, exports and networking, Windows scripting, and the engine-update routine. Bring the rules that fit into the project's `AGENTS.md` instead of linking to this skill from shared files.
+- For several agent runs (workers, reviewer, orchestrator) on one editor, also read [references/agent-workflow.md](references/agent-workflow.md), and start the project's worker instructions from [assets/worker-preamble.md](assets/worker-preamble.md).
+- Don't overwrite a project's existing rules. Propose changes where they conflict.
 
 ## Use what the installed engine ships first
 
@@ -51,8 +70,8 @@ Normal skill setup connects the editor MCP server and fetches docs and API. The 
 - Existing directories without manifest ownership are refused by default. For an explicitly requested migration, inspect their contents and modifications, preserve any custom work, and use `--adopt` only for the disposable reference directories the user wants replaced. Managed snapshots with local edits are always refused; move/preserve those edits before refreshing.
 - Downloads are staged and validated before publication. Each resource commits independently with its manifest entry. If a later resource fails, earlier successful resources remain installed. Report that partial outcome, and do not claim all requested resources refreshed.
 - **The manifest `sbox-context.lock.json` describes the snapshots on this machine.** Either commit it together with the snapshots it describes, or ignore both. Never commit the manifest while ignoring the snapshots: two machines that fetch at different times then disagree about fingerprints, and each later refresh refuses to run or dirties the other's tree. For engine source shared across machines, a git submodule at the source path (shallow, pinned by the superproject's commit) is an alternative that git manages instead of this helper; leave `source` out of `--resources` then.
-- During requested setup, merge the small guidance in [assets/agents-snippet.md](assets/agents-snippet.md) into the existing `AGENTS.md`, adjusting paths and including source guidance when available. Preserve unrelated instructions. If the project does not commit its references, add the generated snapshot directories, `sbox-context.lock.json`, `.sbox-context-stage-*/` and `.sbox-context-update.lock` to `.gitignore`. If it does commit them, ignore only the staging directories and the update lock.
+- During requested setup, merge the guidance in [assets/agents-snippet.md](assets/agents-snippet.md) into the existing `AGENTS.md`, adjusting paths and including source guidance when available. Preserve unrelated instructions. Add `.sbox-editor.lock` to `.gitignore`. If the project generates its scenes or prefabs, offer an `sbox-editor.json` that denies `save_scene`. If the project does not commit its references, add the generated snapshot directories, `sbox-context.lock.json`, `.sbox-context-stage-*/` and `.sbox-context-update.lock` to `.gitignore`. If it does commit them, ignore only the staging directories and the update lock.
 
 Run `--help` for pacing and timeout options. If an upstream change breaks discovery or schema validation, retain the previous snapshot and investigate the official endpoint instead of generating an empty replacement. A Windows directory lock may require the user to close the process watching the snapshot before retrying.
 
-After setup or refresh, report installed resources, paths, version identifiers, the installed engine's location and XML docs, MCP configuration/reachability and open-project checks, and any failures. Do not initialize a game, download unrelated reference implementations, build the engine source, or publish anything as part of reference setup.
+After setup or refresh, report installed resources, paths, version identifiers, the installed engine's location and XML docs, MCP configuration/reachability and open-project checks, and any failures. Do not initialize a game, download unrelated reference implementations, build the engine source, or publish anything as part of reference setup. Editor checks through these scripts supplement the user's final visual and gameplay validation; name what still needs it.
