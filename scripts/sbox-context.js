@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import fs from "node:fs/promises"
 import path from "node:path"
-import { pathToFileURL } from "node:url"
+import { isEntryPoint } from "./entry.js"
 import { DEFAULT_PATHS, exists, fingerprint, readManifest, resolvePaths, assertNoLinks, synchronizeResource, assertOfficialApiUrl } from "./common.js"
 import { fetchDocs } from "./fetch-sbox-docs.js"
 import { fetchApi } from "./fetch-sbox-api.js"
@@ -108,6 +108,6 @@ export async function main(args, builders = { docs: fetchDocs, api: fetchApi, so
   }
 }
 
-if (process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.argv[1])).href) {
+if (isEntryPoint(import.meta.url)) {
   main(process.argv.slice(2)).catch((error) => { console.error(error.message); process.exitCode = 1 })
 }

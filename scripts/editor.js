@@ -2,7 +2,7 @@
 import { existsSync, readdirSync, readFileSync, writeFileSync } from "node:fs"
 import { spawn as spawnProcess } from "node:child_process"
 import path from "node:path"
-import { pathToFileURL } from "node:url"
+import { isEntryPoint } from "./entry.js"
 import { findEngine } from "./engine.js"
 import { lockPath, refresh, status as lockStatus } from "./editor-lock.js"
 
@@ -264,7 +264,7 @@ export async function main(args) {
   }
 }
 
-if (process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.argv[1])).href) {
+if (isEntryPoint(import.meta.url)) {
   main(process.argv.slice(2)).then((code) => { process.exitCode = code }, (error) => {
     console.error(`${error.message}\nThe editor must be running with this project open (Project Settings > AI > Enable MCP Communication on); run from the desktop session, not over SSH.`)
     process.exitCode = 1

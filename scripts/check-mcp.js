@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import path from "node:path"
+import { isEntryPoint } from "./entry.js"
 import { spawnSync } from "node:child_process"
-import { pathToFileURL } from "node:url"
 import { findEngine } from "./engine.js"
 
 const PROTOCOL = "2025-11-25"
@@ -114,7 +114,7 @@ export async function main(args) {
   console.log(JSON.stringify(result, null, 2))
 }
 
-if (process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.argv[1])).href) {
+if (isEntryPoint(import.meta.url)) {
   main(process.argv.slice(2)).catch((error) => {
     console.error(`${error.message}\nOpen the intended project in the s&box editor (Project Settings > AI > Enable MCP Communication must be on), and run from the desktop session: the named pipe is not reachable from a remote SSH session.`)
     process.exitCode = 1

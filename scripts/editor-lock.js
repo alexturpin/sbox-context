@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { closeSync, openSync, readFileSync, renameSync, statSync, unlinkSync, utimesSync, writeFileSync } from "node:fs"
 import path from "node:path"
-import { pathToFileURL } from "node:url"
+import { isEntryPoint } from "./entry.js"
 
 /**
  * One driver for a shared s&box editor at a time.
@@ -150,7 +150,7 @@ export async function main(args) {
   return ok ? 0 : 1
 }
 
-if (process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.argv[1])).href) {
+if (isEntryPoint(import.meta.url)) {
   main(process.argv.slice(2)).then((code) => { process.exitCode = code }, (error) => {
     console.error(error.message)
     process.exitCode = 1
