@@ -1,6 +1,6 @@
 ---
 name: sbox-context
-description: Set up s&box references and the editor connection (sbox-cli), consult the installed engine's XML docs, documentation, API pages and engine source, script the editor safely (lock, project check, deny list), and apply proven working practices for coding agents on s&box projects, including multi-agent setups. Use when starting or setting up an s&box project, doing engine-specific s&box work, driving the s&box editor from agents or scripts, or handling an engine update.
+description: Set up s&box references and the editor connection (sbox-cli), consult the installed engine's XML docs, documentation, API pages and engine source, script the editor safely (lock, project check, deny list), apply proven working practices for coding agents on s&box projects (including multi-agent setups), and import Synty POLYGON assets. Use when starting or setting up an s&box project, doing engine-specific s&box work, driving the s&box editor from agents or scripts, handling an engine update, or importing Synty assets.
 ---
 
 # s&box Context
@@ -33,6 +33,7 @@ node "<skill-dir>/scripts/editor-lock.js" release <HOLDER> --project-root "<game
 - When setting up a project, or when a question isn't covered by the project's instructions, read [references/project-practices.md](references/project-practices.md): reference order, editor access, C# and hot reload, Play-mode verification, Scene Compile and performance, exports and networking, Windows scripting, and the engine-update routine. Bring the rules that fit into the project's `AGENTS.md` instead of linking to this skill from shared files.
 - For several agent runs (workers, reviewer, orchestrator) on one editor, also read [references/agent-workflow.md](references/agent-workflow.md), and start the project's worker instructions from [assets/worker-preamble.md](assets/worker-preamble.md).
 - Don't overwrite a project's existing rules. Propose changes where they conflict.
+- When importing or placing Synty POLYGON assets, read [references/synty-import.md](references/synty-import.md): which download to use, units and axes, `.vmdl`/`.vmat` recipes (glass, mirrors, cutout, emissive), collision, importer design, and measuring pitfalls.
 
 ## Use what the installed engine ships first
 

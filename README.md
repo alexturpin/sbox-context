@@ -41,7 +41,7 @@ node C:\Users\alext\src\sbox-context\scripts\editor.js scene_trace @args.json --
 node C:\Users\alext\src\sbox-context\scripts\editor-lock.js release my-agent --project-root C:\path\to\game
 ```
 
-`editor.js` keeps one sbox-cli session, checks the open project before mutating, honours a project's `sbox-editor.json` (`deny`, `requireLock`), and refuses mutation under another holder's live lock. `references/project-practices.md` and `references/agent-workflow.md` hold the working practices; `assets/worker-preamble.md` is a template for multi-agent projects.
+`editor.js` keeps one sbox-cli session, checks the open project before mutating, honours a project's `sbox-editor.json` (`deny`, `requireLock`), and refuses mutation under another holder's live lock. `references/project-practices.md` and `references/agent-workflow.md` hold the working practices; `assets/worker-preamble.md` is a template for multi-agent projects. `references/synty-import.md` covers preparing Synty POLYGON packs for s&box.
 
 ## Maintain
 
